@@ -1,3 +1,5 @@
+from bisect import insort
+
 from .event import Event
 
 
@@ -6,7 +8,7 @@ class EventCalendar:
         self.__scheduled_events = []
 
     def schedule(self, event: Event) -> None:
-        self.__scheduled_events.append(event)
+        insort(self.__scheduled_events, event)
 
     def pop_event(self) -> Event:
         if self.is_empty:
