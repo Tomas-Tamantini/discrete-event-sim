@@ -1,1 +1,1 @@
-from .event_simulation import EventCalendar
+from .event_simulation import Event, EventCalendar
