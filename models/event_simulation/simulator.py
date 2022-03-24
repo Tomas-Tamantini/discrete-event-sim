@@ -16,5 +16,11 @@ class DiscreteEventSimulator:
     def run(self, time_horizon: float = float('inf')) -> None:
         while not self.__calendar.is_empty and self.__calendar.time_of_next_event <= time_horizon:
             next_event = self.__calendar.pop_event()
-            next_event.fire()
             self.__current_time = next_event.scheduled_time
+            other_events = next_event.fire()
+            if not other_events:
+                continue
+            for e in other_events:
+                if e.scheduled_time < self.current_time:
+                    raise ValueError('Cannot schedule events in the past')
+                self.__calendar.schedule(e)
