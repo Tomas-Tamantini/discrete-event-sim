@@ -27,6 +27,17 @@ def test_after_push_and_pop_calendar_is_empty():
     assert calendar.is_empty
 
 
+def test_can_peek_time_of_next_scheduled_event():
+    calendar = EventCalendar()
+    assert calendar.time_of_next_event is None
+    calendar.schedule(Event(scheduled_time=10))
+    assert calendar.time_of_next_event == 10
+    calendar.schedule(Event(scheduled_time=5))
+    assert calendar.time_of_next_event == 5
+    calendar.schedule(Event(scheduled_time=40))
+    assert calendar.time_of_next_event == 5
+
+
 def test_pop_returns_highest_priority_event():
     calendar = EventCalendar()
     e1 = Event(scheduled_time=10)
