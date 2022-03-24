@@ -29,9 +29,9 @@ def test_after_push_and_pop_calendar_is_empty():
 
 def test_pop_returns_highest_priority_event():
     calendar = EventCalendar()
-    e1 = Event(time_to_fire=10)
-    e2 = Event(time_to_fire=5)
-    e3 = Event(time_to_fire=40)
+    e1 = Event(scheduled_time=10)
+    e2 = Event(scheduled_time=5)
+    e3 = Event(scheduled_time=40)
     for e in (e1, e2, e3):
         calendar.schedule(e)
     assert calendar.pop_event() == e2
