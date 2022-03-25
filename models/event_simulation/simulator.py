@@ -1,3 +1,5 @@
+import logging
+
 from .event_calendar import EventCalendar
 from .model import Model
 
@@ -7,6 +9,7 @@ class DiscreteEventSimulator:
         self.__model = model
         self.__calendar = EventCalendar()
         self.__current_time = 0.0
+        self.__log_state()
 
     @property
     def current_time(self) -> float:
@@ -27,3 +30,6 @@ class DiscreteEventSimulator:
                 if e.scheduled_time < self.current_time:
                     raise ValueError('Cannot schedule events in the past')
                 self.__calendar.schedule(e)
+
+    def __log_state(self) -> None:
+        logging.info(f'({self.current_time}h) State: {self.__model.state}')
