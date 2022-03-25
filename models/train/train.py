@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Hashable
+from typing import Hashable, Optional
 
 from .train_status import TrainStatus
 
@@ -10,3 +10,4 @@ class Train:
     location: Hashable
     is_loaded: bool
     status: TrainStatus
+    flow_destination: Optional[Hashable] = None
