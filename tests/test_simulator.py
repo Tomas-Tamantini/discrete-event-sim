@@ -24,8 +24,9 @@ class ModelStub:
             yield e
         self.__events = []
 
-    def initial_calendar(self) -> EventCalendar:
-        return self.__initial_calendar
+    @property
+    def state(self) -> str:
+        return ''
 
 
 def test_simulator_current_time_starts_at_zero():

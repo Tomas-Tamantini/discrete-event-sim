@@ -165,3 +165,7 @@ class RailroadModel:
                 event = Event(callback=self.__start_unloaded_trip,
                               callback_args=(t,))
                 yield event
+
+    @property
+    def state(self) -> str:
+        return '- ' + '\ -'.join(map(str, self.__trains))
