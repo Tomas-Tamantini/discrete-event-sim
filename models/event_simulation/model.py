@@ -1,8 +1,8 @@
-from typing import Protocol
+from typing import Iterator, Protocol
 
-from .event_calendar import EventCalendar
+from .event import Event
 
 
 class Model(Protocol):
-    def initial_calendar(self) -> EventCalendar:
+    def next_events(self) -> Iterator[Event]:
         ...

@@ -1,3 +1,5 @@
+from typing import Iterator
+
 import pytest
 from models import DiscreteEventSimulator, Event, EventCalendar
 
@@ -15,10 +17,12 @@ class EventSpy(Event):
 
 class ModelStub:
     def __init__(self, events_in_inital_calendar: list[EventSpy] = None) -> None:
-        self.__initial_calendar = EventCalendar()
-        if events_in_inital_calendar:
-            for e in events_in_inital_calendar:
-                self.__initial_calendar.schedule(e)
+        self.__events = events_in_inital_calendar
+
+    def next_events(self) -> Iterator[Event]:
+        for e in self.__events:
+            yield e
+        self.__events = []
 
     def initial_calendar(self) -> EventCalendar:
         return self.__initial_calendar
