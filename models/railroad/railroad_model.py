@@ -1,3 +1,4 @@
+import logging
 from typing import Hashable, Iterator, Optional
 
 from models.event_simulation import Event
@@ -17,6 +18,8 @@ class RailroadModel:
                     'All trains must be waiting in queue initially')
         self.__flows = flows
         self.__trains = trains
+        self.__operated_volumes = {
+            f: {'loaded': 0, 'unloaded': 0} for f in flows}
 
     @property
     def __origin(self) -> Hashable:
@@ -69,8 +72,14 @@ class RailroadModel:
                 return t
 
     def __assign_flow(self, train: Train) -> None:
-        # TODO: Optimize this
-        train.flow_destination = self.__flows[0].destination
+        flow_to_choose = self.__flows[0]
+        max_remaining_demand = -float('inf')
+        for f, vol in self.__operated_volumes.items():
+            remaining_demand = (f.demand - vol['unloaded']) / (1 + f.demand)
+            if remaining_demand > max_remaining_demand:
+                max_remaining_demand = remaining_demand
+                flow_to_choose = f
+        train.flow_destination = flow_to_choose.destination
 
     def __get_flow(self, train: Train) -> Flow:
         if train.flow_destination is None:
@@ -88,6 +97,8 @@ class RailroadModel:
         next_event = Event(scheduled_time=next_time,
                            callback=self.__end_loading,
                            callback_args=(train,))
+        self.__log_event(
+            current_time, description=f'Loading train {train.train_id}')
         return [next_event]
 
     def __end_loading(self, current_time: float, train: Train) -> None:
@@ -95,6 +106,10 @@ class RailroadModel:
             return
         train.is_loaded = True
         train.status = TrainStatus.WAITING_IN_QUEUE
+        flow = self.__get_flow(train)
+        self.__operated_volumes[flow]['loaded'] += flow.train_capacity
+        self.__log_event(
+            current_time, description=f'Train {train.train_id} finshed loading')
 
     def __start_loaded_trip(self, current_time: float, train: Train) -> list[Event]:
         if not self.__can_start_loaded_trip(train):
@@ -105,6 +120,8 @@ class RailroadModel:
         next_event = Event(scheduled_time=next_time,
                            callback=self.__end_loaded_trip,
                            callback_args=(train,))
+        self.__log_event(
+            current_time, description=f'Train {train.train_id} started loaded trip')
         return [next_event]
 
     def __end_loaded_trip(self, current_time: float, train: Train) -> None:
@@ -112,6 +129,8 @@ class RailroadModel:
             return
         train.location = train.flow_destination
         train.status = TrainStatus.WAITING_IN_QUEUE
+        self.__log_event(
+            current_time, description=f'Train {train.train_id} finished loaded trip')
 
     def __start_unloading(self, current_time: float, train: Train) -> list[Event]:
         if not self.__can_unload(train):
@@ -121,23 +140,31 @@ class RailroadModel:
         next_event = Event(scheduled_time=next_time,
                            callback=self.__end_unloading,
                            callback_args=(train,))
+        self.__log_event(
+            current_time, description=f'Train {train.train_id} started unloading')
         return [next_event]
 
     def __end_unloading(self, current_time: float, train: Train) -> None:
-        if train.location != self.__origin or train.status != TrainStatus.UNLOADING:
+        if train.location != train.flow_destination or train.status != TrainStatus.UNLOADING:
             return
         train.is_loaded = False
         train.status = TrainStatus.WAITING_IN_QUEUE
+        flow = self.__get_flow(train)
+        self.__operated_volumes[flow]['unloaded'] += flow.train_capacity
+        self.__log_event(
+            current_time, description=f'Train {train.train_id} finished unloading')
 
     def __start_unloaded_trip(self, current_time: float, train: Train) -> list[Event]:
         if not self.__can_start_unloaded_trip(train):
             return
         train.status = TrainStatus.EN_ROUTE
         next_time = current_time + \
-            self.__get_flow(train).cycle_times.trip_unloaded
+            self.__get_flow(train).cycle_times.trip_empty
         next_event = Event(scheduled_time=next_time,
                            callback=self.__end_unloaded_trip,
                            callback_args=(train,))
+        self.__log_event(
+            current_time, description=f'Train {train.train_id} started empty trip')
         return [next_event]
 
     def __end_unloaded_trip(self, current_time: float, train: Train) -> None:
@@ -145,27 +172,39 @@ class RailroadModel:
             return
         train.location = self.__origin
         train.status = TrainStatus.WAITING_IN_QUEUE
+        self.__log_event(
+            current_time, description=f'Train {train.train_id} finished empty trip')
 
-    def next_events(self) -> Iterator[Event]:
+    def next_events(self, current_time: float = 0.0) -> Iterator[Event]:
         train_to_load = self.__next_train_to_load()
         if train_to_load:
             event = Event(callback=self.__start_loading,
-                          callback_args=(train_to_load,))
+                          callback_args=(train_to_load,),
+                          scheduled_time=current_time)
             yield event
         for t in self.__trains:
             if self.__can_start_loaded_trip(t):
                 event = Event(callback=self.__start_loaded_trip,
-                              callback_args=(t,))
+                              callback_args=(t,),
+                              scheduled_time=current_time)
                 yield event
             elif self.__can_unload(t):
                 event = Event(callback=self.__start_unloading,
-                              callback_args=(t,))
+                              callback_args=(t,),
+                              scheduled_time=current_time)
                 yield event
             elif self.__can_start_unloaded_trip(t):
                 event = Event(callback=self.__start_unloaded_trip,
-                              callback_args=(t,))
+                              callback_args=(t,),
+                              scheduled_time=current_time)
                 yield event
 
     @property
     def state(self) -> str:
-        return '- ' + '\ -'.join(map(str, self.__trains))
+        def op_vol_to_str(flow, vol):
+            return str(flow) + f': <{vol["loaded"]}/{vol["unloaded"]}>'
+        return '- ' + '\ -'.join(map(str, self.__trains)) + f' - Operated volume: ' + '|'.join([op_vol_to_str(f, v) for (f, v) in self.__operated_volumes.items()])
+
+    def __log_event(self, current_time: float, description: str) -> None:
+        logging.info(f'({current_time}h) Event: {description}')
+        logging.info(f'({current_time}h) State: {self.state}')
