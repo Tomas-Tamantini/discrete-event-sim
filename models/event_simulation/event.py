@@ -1,4 +1,4 @@
-from typing import Callable, Iterator, Optional
+from typing import Callable, Optional
 
 
 class Event:
@@ -16,6 +16,6 @@ class Event:
     def __lt__(self, other: 'Event') -> bool:
         return self.__scheduled_time < other.__scheduled_time
 
-    def fire(self) -> Optional[Iterator["Event"]]:
+    def fire(self) -> Optional[list["Event"]]:
         if self.__callback:
             return self.__callback(self.__scheduled_time, *self.__callback_args)
