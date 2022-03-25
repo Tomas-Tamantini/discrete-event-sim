@@ -22,7 +22,7 @@ class DiscreteEventSimulator:
             next_event = self.__calendar.pop_event()
             self.__current_time = next_event.scheduled_time
             other_events = next_event.fire()
-            for e in self.__model.next_events():
+            for e in self.__model.next_events(self.current_time):
                 self.__calendar.schedule(e)
             if not other_events:
                 continue

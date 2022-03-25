@@ -4,7 +4,7 @@ from .event import Event
 
 
 class Model(Protocol):
-    def next_events(self) -> Iterator[Event]:
+    def next_events(self, current_time: float = 0.0) -> Iterator[Event]:
         ...
 
     @property
